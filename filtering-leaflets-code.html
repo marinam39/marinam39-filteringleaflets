@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Leaflet Exercise</title>
+    <meta charset="utf-8" />
+
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.4.0/dist/leaflet.css"
+    />
+    <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js"></script>
+
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+
+    <!-- Correct path to p5.min.js -->
+    <script src="./p5.min.js"></script>
+ 
+  </head>
+
+  <body>
+    <div id="mapid" style="width: 600px; height: 400px;"></div>
+   
+    <div id="controls" style="margin: 15px;">
+      <button id="showAllBuildingsButton">Show All Buildings</button>
+
+      <span style="display:inline-block; width: 30px"></span>
+      <!-- Correct ID for text entry field -->
+      <input type="text" id="highlightBuildingsTextEntry" placeholder="building name" />
+      <button id="highlightBuildingsButton">Highlight</button>
+    </div>
+
+    <script>
+      //make leaflet map abd centre over UBC
+      var map = L.map('mapid', {
+          center: [49.265637, -123.256113],
+          zoom: 15
+        } 
+      );
+
+      //add basemap
+      var topoTiles = L.tileLayer(
+        'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+          maxZoom: 17,
+          attribution: 'Basemap data: &copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>, <a href="http://viewfinderpanoramas.org">SRTM</a> | Basemap style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
+        }
+      ).addTo(map);
+
+      //symbolize buildings
+      var buildingOutlineOptions = {
+        fillColor: "#0137FE",
+        color: "#869FFE",
+        weight: 1,
+        opacity: 0.2,
+        fillOpacity: 0.2
+      };
+
+      function onEachBuilding(feature, layer) {
+        // check if buildings have a feature called placename
+        if (feature.properties && feature.properties.PLACENAME) {
+          layer.bindTooltip(feature.properties.PLACENAME);
+        }
+      }
+
+      function buildingToLayer(feature, latlng) {
+        return L.circleMarker(
+          latlng,
+          buildingOutlineOptions
+        );
+      }
+
+      function buildingsToFilter(feature, layer) {
+        if (buildingToHighlight === "") {
+          return true
+          
+               // In this case, we're not highlighting anything, so draw everything.
+        } else if (feature.properties && feature.properties.PLACENAME) {
+          // We just checked to make sure there are properties to avoid an error
+          //   by asking for the .placename when there are no properties.
+          // Now, we need to check to see if the .placename *includes* the search string we're
+          //   trying to highlight.
+          return feature.properties.PLACENAME.toLowerCase().includes(buildingToHighlight.toLowerCase());
+        } else {
+          return false;
+
+        }
+      }
+
+      var lastLayerAdded = {};
+
+      function addBuildings() {
+        if (map.hasLayer(lastLayerAdded)) {
+          map.removeLayer(lastLayerAdded);
+        }
+        lastLayerAdded = L.geoJSON(buildingGeoJSONdata, {
+          pointToLayer: buildingToLayer,
+          onEachFeature: onEachBuilding,
+          filter: buildingsToFilter
+        });
+        lastLayerAdded.addTo(map);
+      };
+
+      var buildingToHighlight = "";
+
+
+      function highlightBuildings() {
+        buildingToHighlight = document
+          .getElementById("highlightBuildingsTextEntry")
+          .value;
+        addBuildings();
+        buildingToHighlight = ""; // reset so that "Show All Buildings" works.
+      }
+
+      var buildingGeoJSONdata;
+
+
+      $.getJSON("https://raw.githubusercontent.com/UBCGeodata/ubcv-buildings/master/geojson/ubcv_buildings.geojson",
+        function(data) {
+          // Store data for later:
+          buildingGeoJSONdata = data;
+          // Create event listener for ShowAllTrees Button:
+          document
+            .getElementById("showAllBuildingsButton")
+            .addEventListener("click", addBuildings);
+
+          document
+            .getElementById("highlightBuildingsButton")
+            .addEventListener("click", highlightBuildings);
+
+        }
+      );
+     </script>
+  </body>
+</html>
